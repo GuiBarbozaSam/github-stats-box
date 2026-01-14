@@ -1,0 +1,51 @@
+name: Update README Stats from Gist
+on:
+  schedule:
+    - cron: '0 */12 * * *'   # roda a cada 12 horas
+  workflow_dispatch:
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download gist raw (stats)
+        run: |
+          GIST_RAW_URL="https://gist.githubusercontent.com/GuiBarbozaSam/9112e5f4eee631506afb5c92a4cedcdf/raw"
+          echo "Downloading $GIST_RAW_URL"
+          curl -fsSL "$GIST_RAW_URL" -o gist_stats.md
+        # substitua GIST_ID acima pelo id do seu gist (a hash final na URL)
+
+      - name: Insert gist content between markers in README
+        run: |
+          # garante markers no README (se não existirem, adiciona no fim)
+          if ! grep -q "<!-- STATS_START -->" README.md; then
+            printf "\n<!-- STATS_START -->\n<!-- STATS_END -->\n" >> README.md
+          fi
+
+          python - <<'PY'
+from pathlib import Path
+README = Path('README.md').read_text()
+start = '<!-- STATS_START -->'
+end = '<!-- STATS_END -->'
+stats = Path('gist_stats.md').read_text()
+if start in README and end in README:
+    before,rest = README.split(start,1)
+    _,after = rest.split(end,1)
+    new_readme = before + start + "\n\n" + stats.rstrip() + "\n\n" + end + after
+else:
+    new_readme = README + "\n" + start + "\n\n" + stats.rstrip() + "\n\n" + end + "\n"
+Path('README.md').write_text(new_readme)
+PY
+
+      - name: Commit and push changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "chore: update README stats from gist" || echo "No changes to commit"
+          git push
