@@ -16,15 +16,15 @@ jobs:
           GIST_RAW_URL="https://gist.githubusercontent.com/GuiBarbozaSam/9112e5f4eee631506afb5c92a4cedcdf/raw"
           echo "Downloading $GIST_RAW_URL"
           curl -fsSL "$GIST_RAW_URL" -o gist_stats.md
-        # substitua GIST_ID acima pelo id do seu gist (a hash final na URL)
 
-      - name: Insert gist content between markers in README
+      - name: Ensure markers exist in README
         run: |
-          # garante markers no README (se não existirem, adiciona no fim)
           if ! grep -q "<!-- STATS_START -->" README.md; then
             printf "\n<!-- STATS_START -->\n<!-- STATS_END -->\n" >> README.md
           fi
 
+      - name: Insert gist content between markers in README
+        run: |
           python - <<'PY'
 from pathlib import Path
 README = Path('README.md').read_text()
